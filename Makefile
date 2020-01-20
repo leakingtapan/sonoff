@@ -13,7 +13,6 @@ build:
 	mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux go build -ldflags ${LDFLAGS} -o bin/sonoff-server ./cmd/sonoff-server/main.go
 
-
 .PHONY: server
 server:
 	go run cmd/sonoff-server/main.go
