@@ -11,6 +11,10 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	dateLayout = "2006-01-02T15:04:05.000Z"
+)
+
 type Action string
 
 const (
@@ -29,6 +33,18 @@ type Message struct {
 	RomVersion string `json:"romVersion"`
 	Model      string `json:"model"`
 	Ts         int    `json:"ts"`
+}
+
+type UpdateMessage struct {
+	Message
+	Params struct {
+		Switch string `json:"switch"`
+	} `json:"params"`
+}
+
+type QueryMessage struct {
+	Message
+	Params []string `json:"params"`
 }
 
 var upgrader = websocket.Upgrader{} // use default options
@@ -54,22 +70,22 @@ func (ws *WsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer c.Close()
 
 	for {
-		messageType, message, err := c.ReadMessage()
+		messageType, payload, err := c.ReadMessage()
 		if err != nil {
 			log.Printf("read: %s", err)
 			break
 		}
-		log.Print("REQ | WS | DEV | %s", message)
+		log.Printf("REQ | WS | DEV | %s", string(payload))
 		switch messageType {
 		case websocket.TextMessage:
 			var msg Message
-			err := json.Unmarshal([]byte(message), &msg)
+			err := json.Unmarshal(payload, &msg)
 			if err != nil {
-				log.Printf("Failed to unmarshal message: %s", err)
+				log.Printf("Failed to unmarshal payload: %s", err)
 				continue
 			}
-			log.Println(msg)
-			err = ws.handleMessage(&msg, c)
+
+			err = ws.handleMessage(&msg, payload, c)
 			if err != nil {
 				log.Printf("Failed to handle message: %s", err)
 				continue
@@ -80,26 +96,31 @@ func (ws *WsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ws *WsServer) handleMessage(message *Message, conn *websocket.Conn) error {
+func (ws *WsServer) handleMessage(message *Message, payload []byte, conn *websocket.Conn) error {
+	var resp []byte
+	var err error
 	switch message.Action {
 	case Register:
-		err := ws.Register(message, conn)
-		if err != nil {
-			return err
-		}
+		resp, err = ws.Register(message, conn)
 	case Update:
-		ws.Update(message, conn)
+		resp, err = ws.Update(payload, conn)
 	case Query:
-		ws.Query(message, conn)
+		resp, err = ws.Query(payload)
 	case Date:
-		ws.Date(message, conn)
+		resp, err = ws.Date(message)
 	default:
-		log.Println("Unsupported message action: %s", message.Action)
+		log.Printf("Unsupported message action: %s", message.Action)
+		resp, err = ws.Ack(message)
 	}
-	return nil
+	if err != nil {
+		return err
+	}
+
+	log.Printf("RES | WS | %s", string(resp))
+	return conn.WriteMessage(websocket.TextMessage, resp)
 }
 
-func (ws *WsServer) Register(msg *Message, conn *websocket.Conn) error {
+func (ws *WsServer) Register(msg *Message, conn *websocket.Conn) ([]byte, error) {
 	device := Device{
 		Id:      msg.DeviceId,
 		Version: msg.Version,
@@ -119,30 +140,87 @@ func (ws *WsServer) Register(msg *Message, conn *websocket.Conn) error {
 		ApiKey:   "111111111-1111-1111-1111-111111111111",
 	}
 
-	payload, err := json.Marshal(&resp)
-	if err != nil {
-		return err
-	}
-
-	err = conn.WriteMessage(websocket.TextMessage, payload)
-	if err != nil {
-		return err
-	}
-
 	log.Printf("INFO | WS | Device %s registered", device.Id)
-	return nil
+	return json.Marshal(&resp)
 }
 
-func (ws *WsServer) Update(msg *Message, conn *websocket.Conn) {
-	log.Printf("INFO | WS | DEV %s", msg)
+func (ws *WsServer) Update(payload []byte, conn *websocket.Conn) ([]byte, error) {
+	var msg UpdateMessage
+	err := json.Unmarshal(payload, &msg)
+	if err != nil {
+		return nil, err
+	}
+
+	d, found := ws.devices.Get(msg.DeviceId)
+	if !found {
+		log.Printf("ERR | WS | Unknown device %s", msg.DeviceId)
+	} else {
+		d.State = msg.Params.Switch
+		d.Conn = conn
+		ws.devices.AddOrUpdateDevice(d)
+	}
+
+	resp := struct {
+		Err      int    `json:"error"`
+		DeviceId string `json:"deviceid"`
+		ApiKey   string `json:"apikey"`
+	}{
+		Err:      0,
+		DeviceId: msg.DeviceId,
+		ApiKey:   "111111111-1111-1111-1111-111111111111",
+	}
+
+	return json.Marshal(&resp)
 }
 
-func (ws *WsServer) Query(msg *Message, conn *websocket.Conn) {
-	log.Printf("INFO | WS | DEV %s", msg)
+func (ws *WsServer) Query(payload []byte) ([]byte, error) {
+	var msg QueryMessage
+	err := json.Unmarshal(payload, &msg)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := struct {
+		Err      int    `json:"error"`
+		DeviceId string `json:"deviceid"`
+		ApiKey   string `json:"apikey"`
+	}{
+		Err:      0,
+		DeviceId: msg.DeviceId,
+		ApiKey:   "111111111-1111-1111-1111-111111111111",
+	}
+
+	return json.Marshal(&resp)
 }
 
-func (ws *WsServer) Date(msg *Message, conn *websocket.Conn) {
-	log.Printf("INFO | WS | DEV %s", msg)
+func (ws *WsServer) Date(msg *Message) ([]byte, error) {
+	resp := struct {
+		Err      int    `json:"error"`
+		DeviceId string `json:"deviceid"`
+		ApiKey   string `json:"apikey"`
+		Date     string `json:"date"`
+	}{
+		Err:      0,
+		DeviceId: msg.DeviceId,
+		ApiKey:   "111111111-1111-1111-1111-111111111111",
+		Date:     time.Now().Format(dateLayout),
+	}
+
+	return json.Marshal(&resp)
+}
+
+func (ws *WsServer) Ack(msg *Message) ([]byte, error) {
+	resp := struct {
+		Err      int    `json:"error"`
+		DeviceId string `json:"deviceid"`
+		ApiKey   string `json:"apikey"`
+	}{
+		Err:      0,
+		DeviceId: msg.DeviceId,
+		ApiKey:   "111111111-1111-1111-1111-111111111111",
+	}
+
+	return json.Marshal(&resp)
 }
 
 func (ws *WsServer) Serve() {

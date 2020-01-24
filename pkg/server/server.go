@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 type DeviceHandler struct {
 	ip            string
 	webSocketPort int
+	devices       *Devices
 }
 
 func (h *DeviceHandler) Root(w http.ResponseWriter, r *http.Request) {
@@ -22,19 +24,61 @@ func (h *DeviceHandler) Root(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *DeviceHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
+	devices := h.devices.ListDevices()
+	resp, err := json.Marshal(&devices)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to marshal devices: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(msg))
+		return
+	}
 
+	w.Write(resp)
 }
 
 func (h *DeviceHandler) GetDeviceState(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	log.Println(string(vars["deviceId"]))
-	w.Write([]byte("on"))
+	deviceId := vars["deviceId"]
+
+	device, found := h.devices.Get(deviceId)
+	if !found {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Not found"))
+		return
+	}
+
+	resp, err := json.Marshal(&device)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to marshal device: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(msg))
+		return
+	}
+
+	w.Write(resp)
 }
 
 func (h *DeviceHandler) SetDeviceState(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	log.Println(string(vars["deviceId"]))
-	log.Println(string(vars["state"]))
+	deviceId := vars["deviceId"]
+	state := vars["state"]
+	var err error
+
+	switch state {
+	case "on":
+		err = h.devices.TurnOn(deviceId)
+	case "off":
+		err = h.devices.TurnOff(deviceId)
+	}
+
+	if err != nil {
+		msg := fmt.Sprintf("Failed to set device %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(msg))
+		return
+	}
+
+	w.Write([]byte("OK"))
 }
 
 func (h *DeviceHandler) GetDeivce(w http.ResponseWriter, r *http.Request) {
@@ -97,6 +141,7 @@ func (s *DeviceService) Serve() {
 	deviceHandler := &DeviceHandler{
 		ip:            s.serviceIp,
 		webSocketPort: s.websocketPort,
+		devices:       s.devices,
 	}
 	r := mux.NewRouter()
 	deviceHandler.SetRoutes(r)
