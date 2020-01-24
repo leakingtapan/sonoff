@@ -1,32 +1,54 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"text/template"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
+
+type Action string
+
+const (
+	Register Action = "register"
+	Date     Action = "date"
+	Query    Action = "query"
+	Update   Action = "update"
+)
+
+type Message struct {
+	Action     Action `json:"action"`
+	DeviceId   string `json:"deviceId"`
+	UserAgent  string `json:"userAgent"`
+	ApiKey     string `json:"apiKey"`
+	Version    int    `json:"version"`
+	RomVersion string `json:"romVersion"`
+	Model      string `json:"model"`
+	Ts         int    `json:"ts"`
+}
 
 var upgrader = websocket.Upgrader{} // use default options
 
 type WsServer struct {
-	port int
+	port    int
+	devices *Devices
 }
 
-func NewWsServer(port int) *WsServer {
+func NewWsServer(port int, devices *Devices) *WsServer {
 	return &WsServer{
-		port: port,
+		port:    port,
+		devices: devices,
 	}
 }
 
-func (ws *WsServer) handler(w http.ResponseWriter, r *http.Request) {
+func (ws *WsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Print("upgrade:", err)
+		log.Printf("upgrade: %s", err)
 		return
 	}
 	defer c.Close()
@@ -37,32 +59,100 @@ func (ws *WsServer) handler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("read: %s", err)
 			break
 		}
-		log.Printf("recv: %s messge type: %d", message, messageType)
+		log.Print("REQ | WS | DEV | %s", message)
 		switch messageType {
 		case websocket.TextMessage:
-
+			var msg Message
+			err := json.Unmarshal([]byte(message), &msg)
+			if err != nil {
+				log.Printf("Failed to unmarshal message: %s", err)
+				continue
+			}
+			log.Println(msg)
+			err = ws.handleMessage(&msg, c)
+			if err != nil {
+				log.Printf("Failed to handle message: %s", err)
+				continue
+			}
 		default:
 			log.Printf("Non-supported message type: %d", messageType)
 		}
 	}
 }
 
-func (w *WsServer) Register(message string) {
+func (ws *WsServer) handleMessage(message *Message, conn *websocket.Conn) error {
+	switch message.Action {
+	case Register:
+		err := ws.Register(message, conn)
+		if err != nil {
+			return err
+		}
+	case Update:
+		ws.Update(message, conn)
+	case Query:
+		ws.Query(message, conn)
+	case Date:
+		ws.Date(message, conn)
+	default:
+		log.Println("Unsupported message action: %s", message.Action)
+	}
+	return nil
 }
 
-func (w *WsServer) Serve() {
-	r := mux.NewRouter()
-	r.HandleFunc("/", w.handler)
-	r.HandleFunc("/home", Home)
-	r.HandleFunc("/echo", Echo)
+func (ws *WsServer) Register(msg *Message, conn *websocket.Conn) error {
+	device := Device{
+		Id:      msg.DeviceId,
+		Version: msg.Version,
+		Model:   msg.Model,
+		Conn:    conn,
+	}
 
-	addr := fmt.Sprintf(":%d", w.port)
+	ws.devices.AddOrUpdateDevice(&device)
+
+	resp := struct {
+		Err      int    `json:"error"`
+		DeviceId string `json:"deviceid"`
+		ApiKey   string `json:"apikey"`
+	}{
+		Err:      0,
+		DeviceId: device.Id,
+		ApiKey:   "111111111-1111-1111-1111-111111111111",
+	}
+
+	payload, err := json.Marshal(&resp)
+	if err != nil {
+		return err
+	}
+
+	err = conn.WriteMessage(websocket.TextMessage, payload)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("INFO | WS | Device %s registered", device.Id)
+	return nil
+}
+
+func (ws *WsServer) Update(msg *Message, conn *websocket.Conn) {
+	log.Printf("INFO | WS | DEV %s", msg)
+}
+
+func (ws *WsServer) Query(msg *Message, conn *websocket.Conn) {
+	log.Printf("INFO | WS | DEV %s", msg)
+}
+
+func (ws *WsServer) Date(msg *Message, conn *websocket.Conn) {
+	log.Printf("INFO | WS | DEV %s", msg)
+}
+
+func (ws *WsServer) Serve() {
+	addr := fmt.Sprintf(":%d", ws.port)
 	svr := http.Server{
 		Addr:         addr,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      r,
+		Handler:      ws,
 	}
 	log.Fatal(svr.ListenAndServeTLS("./certs/server.crt", "./certs/server.key"))
 }

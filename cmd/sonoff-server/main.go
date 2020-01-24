@@ -5,11 +5,13 @@ import (
 )
 
 func main() {
+	ds := server.NewDeviceStore()
+
 	websocketPort := 1443
-	wsServie := server.NewWsServer(websocketPort)
+	wsServie := server.NewWsServer(websocketPort, ds)
 	go wsServie.Serve()
 
-	servcieIp := "192.168.31.110"
-	deviceService := server.NewDeviceService(serviceIp, websocketPort)
+	serviceIp := "192.168.31.110"
+	deviceService := server.NewDeviceService(serviceIp, websocketPort, ds)
 	deviceService.Serve()
 }

@@ -17,8 +17,8 @@ type DeviceHandler struct {
 
 func (h *DeviceHandler) Root(w http.ResponseWriter, r *http.Request) {
 	log.Printf("REQ | %s | %s ", r.Method, r.URL)
-	//w.Write([]byte("OK"))
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
 func (h *DeviceHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
@@ -66,12 +66,13 @@ func (h *DeviceHandler) DispatchDeivce(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Failed to marshal response: %s", err)
 	}
+	log.Println(string(output))
 	w.Write(output)
 }
 
 func (h *DeviceHandler) SetRoutes(r *mux.Router) {
 	r.HandleFunc("/", h.Root).Methods(http.MethodGet)
-	r.HandleFunc("/", h.GetDevices).Methods(http.MethodGet)
+	r.HandleFunc("/devices", h.GetDevices).Methods(http.MethodGet)
 	r.HandleFunc("/devices/{deviceId}/status", h.GetDeviceState).Methods(http.MethodGet)
 	r.HandleFunc("/devices/{deviceId}/{state}", h.SetDeviceState).Methods(http.MethodPost)
 	r.HandleFunc("/dispatch/device", h.DispatchDeivce).Methods(http.MethodPost)
@@ -81,12 +82,14 @@ type DeviceService struct {
 	svr           *http.Server
 	serviceIp     string
 	websocketPort int
+	devices       *Devices
 }
 
-func NewDeviceService(serviceIp string, websocketPort int) *DeviceService {
+func NewDeviceService(serviceIp string, websocketPort int, devices *Devices) *DeviceService {
 	return &DeviceService{
 		serviceIp:     serviceIp,
 		websocketPort: websocketPort,
+		devices:       devices,
 	}
 }
 
