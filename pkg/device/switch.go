@@ -13,8 +13,9 @@ import (
 )
 
 type SonoffSwitch struct {
-	ws           *websocket.Conn
-	websocketUrl string
+	ws            *websocket.Conn
+	serverIp      string
+	websocketPort int
 
 	deviceId   string
 	apiKey     string
@@ -27,7 +28,7 @@ type SonoffSwitch struct {
 	state string
 }
 
-func NewSonoffSwitch() *SonoffSwitch {
+func NewSonoffSwitch(serverIp string, websocketPort int) *SonoffSwitch {
 	return &SonoffSwitch{
 		websocketUrl: "wss://50.18.84.251:443/api/ws",
 		deviceId:     "",
@@ -63,7 +64,7 @@ func (s *SonoffSwitch) Run(ctx context.Context) error {
 	}
 
 	// TODO: close connection
-	ws, _, err := dialer.Dial(s.websocketUrl, headers)
+	ws, _, err := dialer.Dial(s.websocketUrl(), headers)
 	if err != nil {
 		return err
 	}
@@ -290,4 +291,9 @@ func (s *SonoffSwitch) handleMessage(request []byte) ([]byte, error) {
 		return nil, err
 	}
 
+}
+
+func (s *SonoffSwitch) websocketUrl() string {
+	//websocketUrl: "wss://50.18.84.251:443/api/ws",
+	return fmt.Sprintf("wss://%s:%d/api/ws", s.serverIp, s.websocketPort)
 }

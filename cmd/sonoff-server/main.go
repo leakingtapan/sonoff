@@ -14,8 +14,8 @@ func NewServerCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&serverCmd.serverIp, "server-ip", "192.168.31.110", "the IP address of the server")
-	cmd.Flags().IntVar(&serverCmd.serverPort, "server-port", 8443, "the IP address of the server")
-	cmd.Flags().IntVar(&serverCmd.websocketPort, "websocket-port", 1443, "the websocket port of the server")
+	cmd.Flags().IntVar(&serverCmd.serverPort, "server-port", 8443, "the port of the server (default to 8443)")
+	cmd.Flags().IntVar(&serverCmd.websocketPort, "websocket-port", 1443, "the websocket port of the server (default to 1443")
 
 	return cmd
 }
