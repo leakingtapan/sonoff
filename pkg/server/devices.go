@@ -11,10 +11,10 @@ import (
 )
 
 type Device struct {
-	Id      string
-	Version int
-	Model   string
-	State   string
+	Id      string          `json:"deviceid"`
+	Version int             `json:"version"`
+	Model   string          `json:"model"`
+	State   string          `json:"state:`
 	Conn    *websocket.Conn `json:"-"`
 }
 
@@ -105,7 +105,7 @@ func pushMessage(d *Device) error {
 		UserAgent string `json:"userAgent"`
 		Sequence  string `json:"sequence"`
 		Ts        int    `json:"ts"`
-		From      string `json:"from"`
+		From      string `json:"local"`
 	}{
 		ApiKey:   "111111111-1111-1111-1111-111111111111",
 		Action:   "update",
