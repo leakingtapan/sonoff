@@ -1,6 +1,7 @@
 package device
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -9,12 +10,18 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/leakingtapan/sonoff/pkg/server"
 	"github.com/leakingtapan/sonoff/pkg/types"
 )
 
 type SonoffSwitch struct {
-	ws            *websocket.Conn
-	serverIp      string
+	ws *websocket.Conn
+
+	// the IP address of the dispatch server
+	serverIp string
+	// the IP address of the websocket server
+	websocketServerIp string
+	// the port address of the websocket server
 	websocketPort int
 
 	deviceId   string
@@ -28,15 +35,17 @@ type SonoffSwitch struct {
 	state string
 }
 
-func NewSonoffSwitch(serverIp string, websocketPort int) *SonoffSwitch {
+func NewSonoffSwitch(serverIp string, websocketServerIp string, websocketPort int) *SonoffSwitch {
 	return &SonoffSwitch{
-		websocketUrl: "wss://50.18.84.251:443/api/ws",
-		deviceId:     "",
-		apiKey:       "",
-		version:      2,
-		romVersion:   "1.5.5",
-		model:        "ITA-GZ1-GL",
-		state:        "off",
+		serverIp:          serverIp,
+		websocketServerIp: websocketServerIp,
+		websocketPort:     websocketPort,
+		deviceId:          "",
+		apiKey:            "",
+		version:           2,
+		romVersion:        "1.5.5",
+		model:             "ITA-GZ1-GL",
+		state:             "off",
 	}
 }
 
@@ -141,7 +150,54 @@ func (s *SonoffSwitch) loop(ctx context.Context) {
 }
 
 //TODO: impl
-func (s *SonoffSwitch) Dispatch() {
+func (s *SonoffSwitch) Dispatch() error {
+	dispatchUrl := fmt.Sprintf("http://%s/dispatch/device", s.serverIp)
+	device := struct {
+		server.Device
+		ApiKey     string `json:"apikey"`
+		Accept     string `json:"accept"`
+		RomVersion string `json:"romVersion"`
+		Ts         int    `json:"ts"`
+	}{
+		Device: server.Device{
+			Id:      s.deviceId,
+			Version: s.version,
+			Model:   s.model,
+		},
+		Accept:     "accept",
+		ApiKey:     s.apiKey,
+		RomVersion: s.romVersion,
+		Ts:         119,
+	}
+	payload, err := json.Marshal(&device)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("POST %s", payload)
+	resp, err := http.Post(dispatchUrl, "application/json", bytes.NewBuffer(payload))
+	if err != nil {
+		return err
+	}
+
+	var respData struct {
+		Port   int    `json:"port"`
+		Reason string `json:"reason"`
+		Ip     string `json:"IP"`
+		Error  int    `json:"error"`
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&respData)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("RES %+v", respData)
+
+	s.websocketServerIp = respData.Ip
+	s.websocketPort = respData.Port
+
+	return nil
 }
 
 func (s *SonoffSwitch) Register() error {
@@ -295,5 +351,5 @@ func (s *SonoffSwitch) handleMessage(request []byte) ([]byte, error) {
 
 func (s *SonoffSwitch) websocketUrl() string {
 	//websocketUrl: "wss://50.18.84.251:443/api/ws",
-	return fmt.Sprintf("wss://%s:%d/api/ws", s.serverIp, s.websocketPort)
+	return fmt.Sprintf("wss://%s:%d/api/ws", s.websocketServerIp, s.websocketPort)
 }
