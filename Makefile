@@ -6,7 +6,7 @@ BUILD_DATE?=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS?=""
 #LDFLAGS?="-X ${PKG}/pkg/driver.driverVersion=${VERSION} -X ${PKG}/pkg/driver.gitCommit=${GIT_COMMIT} -X ${PKG}/pkg/driver.buildDate=${BUILD_DATE} -s -w"
 
-COMMANDS=sonoff-server sonoff-switch
+COMMANDS=sonoff
 BINARIES=$(addprefix bin/,$(COMMANDS))
 
 .EXPORT_ALL_VARIABLES:
@@ -27,3 +27,6 @@ binaries: $(BINARIES)
 
 bin/%: cmd/%
 	go build -o $@ ./$<
+
+clean:
+	rm -rf bin/

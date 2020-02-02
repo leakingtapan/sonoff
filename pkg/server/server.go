@@ -125,13 +125,15 @@ func (h *DeviceHandler) SetRoutes(r *mux.Router) {
 type DeviceService struct {
 	svr           *http.Server
 	serviceIp     string
+	servicePort   int
 	websocketPort int
 	devices       *Devices
 }
 
-func NewDeviceService(serviceIp string, websocketPort int, devices *Devices) *DeviceService {
+func NewDeviceService(serviceIp string, servicePort int, websocketPort int, devices *Devices) *DeviceService {
 	return &DeviceService{
 		serviceIp:     serviceIp,
+		servicePort:   servicePort,
 		websocketPort: websocketPort,
 		devices:       devices,
 	}
@@ -146,8 +148,9 @@ func (s *DeviceService) Serve() {
 	r := mux.NewRouter()
 	deviceHandler.SetRoutes(r)
 
+	addr := fmt.Sprintf("%s:%d", s.serviceIp, s.servicePort)
 	svr := http.Server{
-		Addr:         ":8443",
+		Addr:         addr,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,

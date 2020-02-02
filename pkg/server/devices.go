@@ -30,13 +30,14 @@ func NewDeviceStore() *Devices {
 	}
 }
 
+//TODO: move to upper layer
 func (ds *Devices) TurnOn(id string) error {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
 
 	d, found := ds.devices[id]
 	if !found {
-		return fmt.Errorf("Device %s is not found")
+		return fmt.Errorf("Device %s is not found", id)
 	}
 
 	d.State = "on"
@@ -55,7 +56,7 @@ func (ds *Devices) TurnOff(id string) error {
 
 	d, found := ds.devices[id]
 	if !found {
-		return fmt.Errorf("Device %s is not found")
+		return fmt.Errorf("Device %s is not found", id)
 	}
 
 	d.State = "off"
