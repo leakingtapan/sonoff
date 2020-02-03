@@ -10,46 +10,79 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
-	"github.com/leakingtapan/sonoff/pkg/server"
 	"github.com/leakingtapan/sonoff/pkg/types"
 )
 
 type SonoffSwitch struct {
+	types.Device
+	// The websocket connection used by the device
+	// Each device has a dedicated connection
 	ws *websocket.Conn
-
 	// the IP address of the dispatch server
 	serverIp string
 	// the IP address of the websocket server
 	websocketServerIp string
 	// the port address of the websocket server
 	websocketPort int
-
-	deviceId   string
-	apiKey     string
-	version    int
-	romVersion string
-	model      string
-
+	// the API key used to authenticate into the backend server
 	serverApiKey string
-	// the state of the switch as "on" or "off"
-	state string
 }
 
-func NewSonoffSwitch(serverIp string, websocketServerIp string, websocketPort int) *SonoffSwitch {
+func NewSonoffSwitch(
+	serverIp string,
+	websocketServerIp string,
+	websocketPort int,
+	device types.Device,
+) *SonoffSwitch {
 	return &SonoffSwitch{
 		serverIp:          serverIp,
 		websocketServerIp: websocketServerIp,
 		websocketPort:     websocketPort,
-		deviceId:          "",
-		apiKey:            "",
-		version:           2,
-		romVersion:        "1.5.5",
-		model:             "ITA-GZ1-GL",
-		state:             "off",
+		Device:            device,
 	}
 }
 
 func (s *SonoffSwitch) Run(ctx context.Context) error {
+	if s.websocketServerIp == "" || s.websocketPort == 0 {
+		err := s.Dispatch()
+		if err != nil {
+			return err
+		}
+	}
+
+	ws, err := s.connect()
+	if err != nil {
+		return err
+	}
+
+	s.ws = ws
+
+	initFuncs := []func() error{
+		s.Register,
+		s.Date,
+		s.Update,
+		s.Query,
+	}
+
+	for _, initFunc := range initFuncs {
+		err = initFunc()
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+
+	go s.loop(ctx)
+
+	select {
+	case <-ctx.Done():
+		break
+	}
+
+	return nil
+}
+
+func (s *SonoffSwitch) connect() (*websocket.Conn, error) {
 	////TODO: check ws origin
 	//dest, err := url.Parse(s.websocketUrl)
 	//if err != nil {
@@ -72,46 +105,12 @@ func (s *SonoffSwitch) Run(ctx context.Context) error {
 		},
 	}
 
-	// TODO: close connection
+	// TODO: handle close connection
 	ws, _, err := dialer.Dial(s.websocketUrl(), headers)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	s.ws = ws
-
-	err = s.Register()
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = s.Date()
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = s.Update()
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = s.Query()
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	go s.loop(ctx)
-
-	select {
-	case <-ctx.Done():
-		break
-	}
-
-	return nil
+	return ws, err
 }
 
 func (s *SonoffSwitch) loop(ctx context.Context) {
@@ -126,6 +125,7 @@ func (s *SonoffSwitch) loop(ctx context.Context) {
 		msgType, buf, err := s.ws.ReadMessage()
 		if err != nil {
 			log.Printf("Failed to read message: %s", err)
+			//TODO: handle connection closed by server
 			break
 		}
 
@@ -149,24 +149,23 @@ func (s *SonoffSwitch) loop(ctx context.Context) {
 	}
 }
 
-//TODO: impl
 func (s *SonoffSwitch) Dispatch() error {
 	dispatchUrl := fmt.Sprintf("http://%s/dispatch/device", s.serverIp)
 	device := struct {
-		server.Device
+		types.Device
 		ApiKey     string `json:"apikey"`
 		Accept     string `json:"accept"`
 		RomVersion string `json:"romVersion"`
 		Ts         int    `json:"ts"`
 	}{
-		Device: server.Device{
-			Id:      s.deviceId,
-			Version: s.version,
-			Model:   s.model,
+		Device: types.Device{
+			DeviceId: s.DeviceId,
+			Version:  s.Version,
+			Model:    s.Model,
 		},
-		Accept:     "accept",
-		ApiKey:     s.apiKey,
-		RomVersion: s.romVersion,
+		Accept:     "ws;2",
+		ApiKey:     s.ApiKey,
+		RomVersion: s.RomVersion,
 		Ts:         119,
 	}
 	payload, err := json.Marshal(&device)
@@ -193,7 +192,6 @@ func (s *SonoffSwitch) Dispatch() error {
 	}
 
 	log.Printf("RES %+v", respData)
-
 	s.websocketServerIp = respData.Ip
 	s.websocketPort = respData.Port
 
@@ -204,11 +202,11 @@ func (s *SonoffSwitch) Register() error {
 	req := types.Message{
 		Action:     types.Register,
 		UserAgent:  "device",
-		ApiKey:     s.apiKey,
-		DeviceId:   s.deviceId,
-		Version:    s.version,
-		RomVersion: s.romVersion,
-		Model:      s.model,
+		ApiKey:     s.ApiKey,
+		DeviceId:   s.DeviceId,
+		Version:    s.Version,
+		RomVersion: s.RomVersion,
+		Model:      s.Model,
 		//Ts:         time.Now().Unix(), //TODO: precision
 		Ts: 193,
 	}
@@ -237,7 +235,7 @@ func (s *SonoffSwitch) Date() error {
 		Action:    types.Date,
 		UserAgent: "device",
 		ApiKey:    s.serverApiKey,
-		DeviceId:  s.deviceId,
+		DeviceId:  s.DeviceId,
 	}
 	data, err := json.Marshal(&req)
 	if err != nil {
@@ -254,10 +252,10 @@ func (s *SonoffSwitch) Update() error {
 			Action:    types.Update,
 			UserAgent: "device",
 			ApiKey:    s.serverApiKey,
-			DeviceId:  s.deviceId,
+			DeviceId:  s.DeviceId,
 		},
 		Params: types.UpdateParams{
-			Switch: s.state,
+			Switch: s.State,
 		},
 	}
 
@@ -276,7 +274,7 @@ func (s *SonoffSwitch) Query() error {
 			Action:    types.Query,
 			UserAgent: "device",
 			ApiKey:    s.serverApiKey,
-			DeviceId:  s.deviceId,
+			DeviceId:  s.DeviceId,
 		},
 		Params: []string{"timers"},
 	}
@@ -325,7 +323,7 @@ func (s *SonoffSwitch) handleMessage(request []byte) ([]byte, error) {
 			log.Println("Failed to unmarshal update message: %s", err)
 			return nil, err
 		}
-		s.state = updateMsg.Params.Switch
+		s.State = updateMsg.Params.Switch
 
 		resp := struct {
 			Err       int    `json:"error"`
@@ -334,7 +332,7 @@ func (s *SonoffSwitch) handleMessage(request []byte) ([]byte, error) {
 			DeviceId  string `json:"deviceid"`
 			Sequence  string `json:"sequence"`
 		}{
-			DeviceId:  s.deviceId,
+			DeviceId:  s.DeviceId,
 			UserAgent: "device",
 			ApiKey:    s.serverApiKey,
 			Err:       0,
@@ -346,10 +344,10 @@ func (s *SonoffSwitch) handleMessage(request []byte) ([]byte, error) {
 		log.Printf("Unsupported action: %s", msg.Action)
 		return nil, err
 	}
-
 }
 
+//websocketUrl return the websocket URL in the form of
+// "wss://50.18.84.251:443/api/ws"
 func (s *SonoffSwitch) websocketUrl() string {
-	//websocketUrl: "wss://50.18.84.251:443/api/ws",
 	return fmt.Sprintf("wss://%s:%d/api/ws", s.websocketServerIp, s.websocketPort)
 }

@@ -93,10 +93,14 @@ func (ws *WsServer) handleMessage(payload []byte, conn *websocket.Conn) error {
 
 func (ws *WsServer) Register(msg *types.Message, conn *websocket.Conn) ([]byte, error) {
 	device := Device{
-		Id:      msg.DeviceId,
-		Version: msg.Version,
-		Model:   msg.Model,
-		Conn:    conn,
+		Device: types.Device{
+			DeviceId:   msg.DeviceId,
+			ApiKey:     msg.ApiKey,
+			Version:    msg.Version,
+			RomVersion: msg.RomVersion,
+			Model:      msg.Model,
+		},
+		Conn: conn,
 	}
 
 	ws.devices.AddOrUpdateDevice(&device)
@@ -107,11 +111,11 @@ func (ws *WsServer) Register(msg *types.Message, conn *websocket.Conn) ([]byte, 
 		ApiKey   string `json:"apikey"`
 	}{
 		Err:      0,
-		DeviceId: device.Id,
+		DeviceId: device.DeviceId,
 		ApiKey:   "111111111-1111-1111-1111-111111111111",
 	}
 
-	log.Printf("INFO | WS | Device %s registered", device.Id)
+	log.Printf("INFO | WS | Device %s registered", device.DeviceId)
 	return json.Marshal(&resp)
 }
 

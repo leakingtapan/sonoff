@@ -34,3 +34,14 @@ type QueryMessage struct {
 	Message
 	Params []string `json:"params"`
 }
+
+type Device struct {
+	DeviceId   string `json:"deviceid"`
+	ApiKey     string `json:"apikey"`
+	Version    int    `json:"version"`
+	RomVersion string `json:"romVersion"`
+	Model      string `json:"model"`
+
+	// the state of the switch as "on" or "off"
+	State string `json:"state"`
+}

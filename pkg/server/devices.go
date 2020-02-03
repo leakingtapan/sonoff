@@ -8,17 +8,14 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/leakingtapan/sonoff/pkg/types"
 )
 
 type Device struct {
-	Id      string          `json:"deviceid"`
-	Version int             `json:"version"`
-	Model   string          `json:"model"`
-	State   string          `json:"state:`
-	Conn    *websocket.Conn `json:"-"`
+	types.Device
+	Conn *websocket.Conn `json:"-"`
 }
 
-// TODO: add mu
 type Devices struct {
 	mu      sync.Mutex
 	devices map[string]*Device
@@ -92,7 +89,7 @@ func (ds *Devices) AddOrUpdateDevice(d *Device) {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
 
-	ds.devices[d.Id] = d
+	ds.devices[d.DeviceId] = d
 }
 
 func pushMessage(d *Device) error {
@@ -110,7 +107,7 @@ func pushMessage(d *Device) error {
 	}{
 		ApiKey:   "111111111-1111-1111-1111-111111111111",
 		Action:   "update",
-		DeviceId: d.Id,
+		DeviceId: d.DeviceId,
 		Params: struct {
 			Switch string `json:"switch"`
 		}{
