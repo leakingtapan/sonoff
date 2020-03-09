@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/websocket"
 	"github.com/leakingtapan/sonoff/pkg/types"
@@ -15,6 +16,7 @@ import (
 
 type SonoffSwitch struct {
 	types.Device
+	mu sync.Mutex
 	// The websocket connection used by the device
 	// Each device has a dedicated connection
 	ws *websocket.Conn
@@ -26,6 +28,8 @@ type SonoffSwitch struct {
 	websocketPort int
 	// the API key used to authenticate into the backend server
 	serverApiKey string
+	// the channel for switch state change events
+	watchCh chan string
 }
 
 func NewSonoffSwitch(
@@ -35,16 +39,17 @@ func NewSonoffSwitch(
 	device types.Device,
 ) *SonoffSwitch {
 	return &SonoffSwitch{
+		Device:            device,
 		serverIp:          serverIp,
 		websocketServerIp: websocketServerIp,
 		websocketPort:     websocketPort,
-		Device:            device,
+		watchCh:           make(chan string, 128),
 	}
 }
 
 func (s *SonoffSwitch) Run(ctx context.Context) error {
 	if s.websocketServerIp == "" || s.websocketPort == 0 {
-		err := s.Dispatch()
+		err := s.dispatch()
 		if err != nil {
 			return err
 		}
@@ -58,10 +63,10 @@ func (s *SonoffSwitch) Run(ctx context.Context) error {
 	s.ws = ws
 
 	initFuncs := []func() error{
-		s.Register,
-		s.Date,
-		s.Update,
-		s.Query,
+		s.register,
+		s.date,
+		s.update,
+		s.query,
 	}
 
 	for _, initFunc := range initFuncs {
@@ -80,6 +85,26 @@ func (s *SonoffSwitch) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *SonoffSwitch) GetState() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.Device.State
+}
+
+func (s *SonoffSwitch) SetState(state string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.Device.State = state
+	//TODO: handle channel full
+	s.watchCh <- state
+}
+
+func (s *SonoffSwitch) Watch() <-chan string {
+	return s.watchCh
 }
 
 func (s *SonoffSwitch) connect() (*websocket.Conn, error) {
@@ -149,7 +174,7 @@ func (s *SonoffSwitch) loop(ctx context.Context) {
 	}
 }
 
-func (s *SonoffSwitch) Dispatch() error {
+func (s *SonoffSwitch) dispatch() error {
 	dispatchUrl := fmt.Sprintf("http://%s/dispatch/device", s.serverIp)
 	device := struct {
 		types.Device
@@ -198,7 +223,7 @@ func (s *SonoffSwitch) Dispatch() error {
 	return nil
 }
 
-func (s *SonoffSwitch) Register() error {
+func (s *SonoffSwitch) register() error {
 	req := types.Message{
 		Action:     types.Register,
 		UserAgent:  "device",
@@ -230,7 +255,7 @@ func (s *SonoffSwitch) Register() error {
 	return nil
 }
 
-func (s *SonoffSwitch) Date() error {
+func (s *SonoffSwitch) date() error {
 	req := types.Message{
 		Action:    types.Date,
 		UserAgent: "device",
@@ -246,7 +271,7 @@ func (s *SonoffSwitch) Date() error {
 	return err
 }
 
-func (s *SonoffSwitch) Update() error {
+func (s *SonoffSwitch) update() error {
 	req := types.UpdateMessage{
 		Message: types.Message{
 			Action:    types.Update,
@@ -268,7 +293,7 @@ func (s *SonoffSwitch) Update() error {
 	return err
 }
 
-func (s *SonoffSwitch) Query() error {
+func (s *SonoffSwitch) query() error {
 	req := types.QueryMessage{
 		Message: types.Message{
 			Action:    types.Query,
@@ -323,7 +348,9 @@ func (s *SonoffSwitch) handleMessage(request []byte) ([]byte, error) {
 			log.Println("Failed to unmarshal update message: %s", err)
 			return nil, err
 		}
+		s.mu.Lock()
 		s.State = updateMsg.Params.Switch
+		s.mu.Unlock()
 
 		resp := struct {
 			Err       int    `json:"error"`

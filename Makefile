@@ -1,5 +1,5 @@
 PKG=github.com/leakingtapan/sonoff
-IMAGE?=chengpan/sonoff-server
+IMAGE?=chengpan/sonoff
 VERSION=v0.1.0-dirty
 GIT_COMMIT?=$(shell git rev-parse HEAD)
 BUILD_DATE?=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -11,8 +11,7 @@ BINARIES=$(addprefix bin/,$(COMMANDS))
 
 .EXPORT_ALL_VARIABLES:
 
-.PHONY: build
-build:
+build: bin/sonoff
 	mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux go build -ldflags ${LDFLAGS} -o bin/sonoff-server ./cmd/sonoff-server/main.go
 
@@ -20,8 +19,8 @@ build:
 server:
 	go run cmd/sonoff-server/main.go
 
-switch:
-	go run cmd/sonoff-switch/main.go
+switch: build
+	./bin/sonoff switch
 
 binaries: $(BINARIES)
 
