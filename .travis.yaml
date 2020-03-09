@@ -1,0 +1,15 @@
+language: go
+go_import_path: github.com/leakingtapan/sonoff
+
+env:
+  global:
+    - GO111MODULE=on
+
+go:
+  - "1.13.4"
+
+before_install:
+  - go get github.com/mattn/goveralls
+
+script:
+  - make
