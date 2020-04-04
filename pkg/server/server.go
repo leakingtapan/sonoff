@@ -148,7 +148,7 @@ func (s *DeviceService) Serve() {
 	r := mux.NewRouter()
 	deviceHandler.SetRoutes(r)
 
-	addr := fmt.Sprintf("%s:%d", s.serviceIp, s.servicePort)
+	addr := fmt.Sprintf("%s:%d", "", s.servicePort)
 	svr := http.Server{
 		Addr:         addr,
 		WriteTimeout: time.Second * 15,

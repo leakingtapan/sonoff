@@ -1,0 +1,48 @@
+# Controller Service
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: sonoff-server 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonoff-server 
+  template:
+    metadata:
+      labels:
+        app: sonoff-server 
+    spec:
+      containers:
+        - name: sonoff-esrver 
+          image: chengpan/sonoff:latest 
+          args :
+            - sonoff
+            - server
+            - --server-ip=192.168.31.141
+          ports:
+            - containerPort: 8443
+              name: server-port
+            - containerPort: 1443
+              name: ws-server-port
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: sonoff-server
+  name: sonoff-service
+spec:
+  selector:
+    app: sonoff-server
+  type: LoadBalancer
+  ports:
+  - name: server-port 
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
+  - name: ws-server-port
+    port: 1443
+    protocol: TCP
+    targetPort: 1443
