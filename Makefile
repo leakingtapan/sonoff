@@ -6,6 +6,7 @@ GO_BUILD_EXTR_ENV?=
 LDFLAGS?=""
 GO_BUILD_ENV=CGO_ENABLED=0 GOOS=linux
 GO111MODULE=on
+OS=$(shell uname | tr '[:upper:]' '[:lower:]')
 #LDFLAGS?="-s -w -X main.version=${VERSION} -X main.gitCommit=${GIT_COMMIT} -X"
 
 COMMANDS=sonoff
@@ -44,3 +45,11 @@ image:
 	docker manifest annotate chengpan/sonoff:latest chengpan/sonoff:amd64 --os linux --arch amd64
 	docker manifest push chengpan/sonoff:latest
 
+bin/swagger:
+	curl -o ./bin/swagger -L https://github.com/go-swagger/go-swagger/releases/download/v0.23.0/swagger_${OS}_amd64
+	chmod +x ./bin/swagger
+
+swagger-gen:
+	find ./apis ! -name swagger.yaml -type f -delete
+	./bin/swagger generate model -f ./apis/swagger.yaml --model-package=apis/models
+	./bin/swagger generate client -f ./apis/swagger.yaml --model-package=apis/models --client-package=apis/client
