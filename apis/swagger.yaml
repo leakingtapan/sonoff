@@ -1,0 +1,108 @@
+swagger: "2.0"
+info:
+  title: Snonoff Server API
+  description: RESTfull API for sonoff server
+  version: 0.1.0
+  license:
+    name: "Apache 2.0"
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+    
+basePath: "/"
+
+schemes:
+  - http
+  - https
+
+consumes:
+  - application/json
+  
+produces:
+  - application/json
+  
+  
+paths:
+  /devices:
+    get:
+      summary: "Returns the list of devices"
+      operationId: describeDevices
+      responses:
+        200:
+          description: The device list
+          schema:
+            $ref: "#/definitions/Devices"
+        default:
+          description: Internal Server Error
+          schema:
+            $ref: "#/definitions/Error"
+  /devices/{deviceId}:
+    get:
+      summary: "Returns device by device ID"
+      operationId: getDeviceById
+      parameters:
+      - name: "deviceId"
+        in: "path"
+        description: "ID of the device"
+        required: true
+        type: string
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Device"
+        404:
+          description: "Device not found"
+        default:
+          description: Internal Server Error
+          schema:
+            $ref: "#/definitions/Error"
+  /devices/{deviceId}/state/{state}:
+    post:
+      summary: "Setts the state of device given device ID"
+      operationId: setDeviceStateById
+      parameters:
+      - name: "deviceId"
+        in: path
+        description: "ID of the device"
+        required: true
+        type: string
+      - name: "state"
+        in: "path"
+        description: "The state of the device (on or off)"
+        required: true
+        type: string
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Device"
+        404:
+          description: "Device not found"
+        default:
+          description: Internal Server Error
+          schema:
+            $ref: "#/definitions/Error"
+definitions:
+  Device:
+    type: object
+    properties:
+      deviceId:
+        type: string
+      apiKey:
+        type: string
+      version:
+        type: integer
+      romVersion:
+        type: string
+      model:
+        type: string
+  Devices:
+    type: array
+    items:
+      $ref: "#/definitions/Device"
+  Error:
+    type: object
+    properties:
+      fault_message:
+        type: string
+        description: A description of the error condition
+        readOnly: true
