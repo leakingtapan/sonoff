@@ -4,7 +4,7 @@ VERSION=dev
 GIT_COMMIT?=$(shell git rev-parse --short HEAD)
 GO_BUILD_EXTR_ENV?=
 LDFLAGS?=""
-GO_BUILD_ENV=CGO_ENABLED=0 GOOS=linux
+GO_BUILD_ENV=CGO_ENABLED=0
 GO111MODULE=on
 OS=$(shell uname | tr '[:upper:]' '[:lower:]')
 #LDFLAGS?="-s -w -X main.version=${VERSION} -X main.gitCommit=${GIT_COMMIT} -X"
