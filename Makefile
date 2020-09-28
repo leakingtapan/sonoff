@@ -36,15 +36,8 @@ clean:
 	rm -rf bin/
 
 image:
-	docker build -t chengpan/sonoff:armv7 .
-	docker build -t chengpan/sonoff:amd64 .
-	docker push chengpan/sonoff:armv7
-	docker push chengpan/sonoff:amd64
-	docker manifest create chengpan/sonoff:latest chengpan/sonoff:armv7 chengpan/sonoff:amd64
-	docker manifest annotate chengpan/sonoff:latest chengpan/sonoff:armv7 --os linux --arch arm
-	docker manifest annotate chengpan/sonoff:latest chengpan/sonoff:amd64 --os linux --arch amd64
-	docker manifest push chengpan/sonoff:latest
-
+	docker buildx build -t cheng/sonoff:latest --platform=linux/arm64,linux/amd64 --output="type=image,push=false" .
+	
 bin/swagger:
 	curl -o ./bin/swagger -L https://github.com/go-swagger/go-swagger/releases/download/v0.23.0/swagger_${OS}_amd64
 	chmod +x ./bin/swagger
