@@ -154,7 +154,7 @@ func (s *SonoffSwitch) loop(ctx context.Context) {
 			break
 		}
 
-		log.Printf("< %s", string(buf))
+		log.Printf("RX %s", string(buf))
 		switch msgType {
 		case websocket.TextMessage:
 			resp, err := s.handleMessage(buf)
@@ -162,7 +162,12 @@ func (s *SonoffSwitch) loop(ctx context.Context) {
 				log.Printf("Failed to handle message: %s", err)
 				continue
 			}
-			log.Printf("> %s", string(resp))
+
+			if resp == nil {
+				continue
+			}
+
+			log.Printf("TX %s", string(resp))
 			err = s.ws.WriteMessage(websocket.TextMessage, resp)
 			if err != nil {
 				log.Printf("Failed to write response message: %s", err)
@@ -203,6 +208,7 @@ func (s *SonoffSwitch) dispatch() error {
 	if err != nil {
 		return err
 	}
+	log.Printf("POST DONE")
 
 	var respData struct {
 		Port   int    `json:"port"`
@@ -369,8 +375,9 @@ func (s *SonoffSwitch) handleMessage(request []byte) ([]byte, error) {
 		return json.Marshal(&resp)
 	default:
 		log.Printf("Unsupported action: %s", msg.Action)
-		return nil, err
 	}
+
+	return nil, nil
 }
 
 //websocketUrl return the websocket URL in the form of

@@ -66,7 +66,7 @@ func (ws *WsServer) handleMessage(payload []byte, conn *websocket.Conn) error {
 
 	err = json.Unmarshal(payload, &message)
 	if err != nil {
-		log.Printf("Failed to unmarshal payload: %s", err)
+		log.Printf("Failed to unmarshal payload: %+v err: %+v", message, err)
 		return err
 	}
 

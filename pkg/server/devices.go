@@ -103,7 +103,7 @@ func pushMessage(d *Device) error {
 		UserAgent string `json:"userAgent"`
 		Sequence  string `json:"sequence"`
 		Ts        int    `json:"ts"`
-		From      string `json:"local"`
+		From      string `json:"from"`
 	}{
 		ApiKey:   "111111111-1111-1111-1111-111111111111",
 		Action:   "update",
