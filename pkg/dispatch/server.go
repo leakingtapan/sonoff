@@ -68,7 +68,7 @@ func (s *DispatchServer) ServeHTTPS() error {
 
 // TODO: configurable ports
 func (s *DispatchServer) Serve() error {
-	svr := s.server(80)
+	svr := s.server(8080)
 	return svr.ListenAndServe()
 }
 

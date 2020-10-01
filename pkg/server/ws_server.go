@@ -79,12 +79,14 @@ func (ws *WsServer) handleMessage(payload []byte, conn *websocket.Conn) error {
 		resp, err = ws.Query(payload)
 	case types.Date:
 		resp, err = ws.Date(message)
-	default:
-		log.Printf("Unsupported message action: %s", message.Action)
-		resp, err = ws.Ack(message)
 	}
+
 	if err != nil {
 		return err
+	}
+
+	if resp == nil {
+		return nil
 	}
 
 	log.Printf("RES | WS | %s", string(resp))

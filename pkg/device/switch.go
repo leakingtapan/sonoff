@@ -22,6 +22,8 @@ type SonoffSwitch struct {
 	ws *websocket.Conn
 	// the IP address of the dispatch server
 	serverIp string
+	// the port of the dispatch server
+	serverPort int
 	// the IP address of the websocket server
 	websocketServerIp string
 	// the port address of the websocket server
@@ -34,6 +36,7 @@ type SonoffSwitch struct {
 
 func NewSonoffSwitch(
 	serverIp string,
+	serverPort int,
 	websocketServerIp string,
 	websocketPort int,
 	device types.Device,
@@ -41,6 +44,7 @@ func NewSonoffSwitch(
 	return &SonoffSwitch{
 		Device:            device,
 		serverIp:          serverIp,
+		serverPort:        serverPort,
 		websocketServerIp: websocketServerIp,
 		websocketPort:     websocketPort,
 		watchCh:           make(chan string, 128),
@@ -180,7 +184,7 @@ func (s *SonoffSwitch) loop(ctx context.Context) {
 }
 
 func (s *SonoffSwitch) dispatch() error {
-	dispatchUrl := fmt.Sprintf("http://%s/dispatch/device", s.serverIp)
+	dispatchUrl := fmt.Sprintf("http://%s:%d/dispatch/device", s.serverIp, s.serverPort)
 	device := struct {
 		types.Device
 		ApiKey     string `json:"apikey"`
