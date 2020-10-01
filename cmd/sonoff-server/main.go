@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/leakingtapan/sonoff/pkg/dispatch"
 	"github.com/leakingtapan/sonoff/pkg/server"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +33,12 @@ func (c *serverCmd) Run(cmd *cobra.Command, args []string) error {
 	wsServie := server.NewWsServer(c.websocketPort, ds)
 	go wsServie.Serve()
 
+	dispatchServer := dispatch.NewDispatchServer(80, c.serverIp, c.websocketPort)
+	go dispatchServer.Serve()
+	go dispatchServer.ServeHTTPS()
+
 	deviceService := server.NewDeviceService(c.serverIp, c.serverPort, c.websocketPort, ds)
-	deviceService.Serve()
+	deviceService.ServeHTTPS()
+
 	return nil
 }

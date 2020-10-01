@@ -66,7 +66,7 @@ func (ws *WsServer) handleMessage(payload []byte, conn *websocket.Conn) error {
 
 	err = json.Unmarshal(payload, &message)
 	if err != nil {
-		log.Printf("Failed to unmarshal payload: %s", err)
+		log.Printf("Failed to unmarshal payload: %+v err: %+v", message, err)
 		return err
 	}
 
@@ -79,12 +79,14 @@ func (ws *WsServer) handleMessage(payload []byte, conn *websocket.Conn) error {
 		resp, err = ws.Query(payload)
 	case types.Date:
 		resp, err = ws.Date(message)
-	default:
-		log.Printf("Unsupported message action: %s", message.Action)
-		resp, err = ws.Ack(message)
 	}
+
 	if err != nil {
 		return err
+	}
+
+	if resp == nil {
+		return nil
 	}
 
 	log.Printf("RES | WS | %s", string(resp))

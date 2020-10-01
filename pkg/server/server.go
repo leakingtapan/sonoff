@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -84,42 +83,12 @@ func (h *DeviceHandler) SetDeviceState(w http.ResponseWriter, r *http.Request) {
 func (h *DeviceHandler) GetDeivce(w http.ResponseWriter, r *http.Request) {
 }
 
-func (h *DeviceHandler) DispatchDeivce(w http.ResponseWriter, r *http.Request) {
-	log.Printf("REQ | %s | %s ", r.Method, r.URL)
-
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("Failed to read payload: %s", err)
-		return
-	}
-	log.Printf("REQ | %s", string(body))
-
-	resp := struct {
-		Err    int    `json:"error"`
-		Reason string `json:"reason"`
-		Ip     string `json:"IP"`
-		Port   int    `json:"port"`
-	}{
-		Err:    0,
-		Reason: "ok",
-		Ip:     h.ip,
-		Port:   h.webSocketPort,
-	}
-
-	output, err := json.Marshal(resp)
-	if err != nil {
-		log.Printf("Failed to marshal response: %s", err)
-	}
-	log.Println(string(output))
-	w.Write(output)
-}
-
 func (h *DeviceHandler) SetRoutes(r *mux.Router) {
 	r.HandleFunc("/", h.Root).Methods(http.MethodGet)
 	r.HandleFunc("/devices", h.GetDevices).Methods(http.MethodGet)
 	r.HandleFunc("/devices/{deviceId}/status", h.GetDeviceState).Methods(http.MethodGet)
 	r.HandleFunc("/devices/{deviceId}/{state}", h.SetDeviceState).Methods(http.MethodPost)
-	r.HandleFunc("/dispatch/device", h.DispatchDeivce).Methods(http.MethodPost)
+	//r.HandleFunc("/dispatch/device", h.DispatchDeivce).Methods(http.MethodPost)
 }
 
 type DeviceService struct {
@@ -139,7 +108,7 @@ func NewDeviceService(serviceIp string, servicePort int, websocketPort int, devi
 	}
 }
 
-func (s *DeviceService) Serve() {
+func (s *DeviceService) ServeHTTPS() {
 	deviceHandler := &DeviceHandler{
 		ip:            s.serviceIp,
 		webSocketPort: s.websocketPort,
