@@ -36,7 +36,7 @@ clean:
 	rm -rf bin/
 
 image:
-	docker buildx build -t cheng/sonoff:latest --platform=linux/arm64,linux/amd64 --output="type=image,push=false" .
+	docker build -t sonoff:latest .
 	
 bin/swagger:
 	curl -o ./bin/swagger -L https://github.com/go-swagger/go-swagger/releases/download/v0.25.0/swagger_${OS}_amd64
