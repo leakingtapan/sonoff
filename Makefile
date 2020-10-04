@@ -39,10 +39,10 @@ image:
 	docker buildx build -t cheng/sonoff:latest --platform=linux/arm64,linux/amd64 --output="type=image,push=false" .
 	
 bin/swagger:
-	curl -o ./bin/swagger -L https://github.com/go-swagger/go-swagger/releases/download/v0.23.0/swagger_${OS}_amd64
+	curl -o ./bin/swagger -L https://github.com/go-swagger/go-swagger/releases/download/v0.25.0/swagger_${OS}_amd64
 	chmod +x ./bin/swagger
 
-swagger-gen:
+swagger-gen: bin/swagger
 	find ./apis ! -name swagger.yaml -type f -delete
 	./bin/swagger generate model -f ./apis/swagger.yaml --model-package=apis/models
 	./bin/swagger generate client -f ./apis/swagger.yaml --model-package=apis/models --client-package=apis/client

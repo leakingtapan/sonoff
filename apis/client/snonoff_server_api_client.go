@@ -9,9 +9,10 @@ import (
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+	"github.com/leakingtapan/sonoff/apis/client/operations"
 )
 
-// Default snonoff server HTTP client.
+// Default snonoff server API HTTP client.
 var Default = NewHTTPClient(nil)
 
 const (
@@ -26,14 +27,14 @@ const (
 // DefaultSchemes are the default schemes found in Meta (info) section of spec file
 var DefaultSchemes = []string{"http", "https"}
 
-// NewHTTPClient creates a new snonoff server HTTP client.
-func NewHTTPClient(formats strfmt.Registry) *SnonoffServer {
+// NewHTTPClient creates a new snonoff server API HTTP client.
+func NewHTTPClient(formats strfmt.Registry) *SnonoffServerAPI {
 	return NewHTTPClientWithConfig(formats, nil)
 }
 
-// NewHTTPClientWithConfig creates a new snonoff server HTTP client,
+// NewHTTPClientWithConfig creates a new snonoff server API HTTP client,
 // using a customizable transport config.
-func NewHTTPClientWithConfig(formats strfmt.Registry, cfg *TransportConfig) *SnonoffServer {
+func NewHTTPClientWithConfig(formats strfmt.Registry, cfg *TransportConfig) *SnonoffServerAPI {
 	// ensure nullable parameters have default
 	if cfg == nil {
 		cfg = DefaultTransportConfig()
@@ -44,14 +45,14 @@ func NewHTTPClientWithConfig(formats strfmt.Registry, cfg *TransportConfig) *Sno
 	return New(transport, formats)
 }
 
-// New creates a new snonoff server client
-func New(transport runtime.ClientTransport, formats strfmt.Registry) *SnonoffServer {
+// New creates a new snonoff server API client
+func New(transport runtime.ClientTransport, formats strfmt.Registry) *SnonoffServerAPI {
 	// ensure nullable parameters have default
 	if formats == nil {
 		formats = strfmt.Default
 	}
 
-	cli := new(SnonoffServer)
+	cli := new(SnonoffServerAPI)
 	cli.Transport = transport
 	cli.Operations = operations.New(transport, formats)
 	return cli
@@ -96,15 +97,15 @@ func (cfg *TransportConfig) WithSchemes(schemes []string) *TransportConfig {
 	return cfg
 }
 
-// SnonoffServer is a client for snonoff server
-type SnonoffServer struct {
+// SnonoffServerAPI is a client for snonoff server API
+type SnonoffServerAPI struct {
 	Operations operations.ClientService
 
 	Transport runtime.ClientTransport
 }
 
 // SetTransport changes the transport on the client and all its subresources
-func (c *SnonoffServer) SetTransport(transport runtime.ClientTransport) {
+func (c *SnonoffServerAPI) SetTransport(transport runtime.ClientTransport) {
 	c.Transport = transport
 	c.Operations.SetTransport(transport)
 }
