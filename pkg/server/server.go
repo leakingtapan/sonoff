@@ -32,6 +32,7 @@ func (h *DeviceHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(resp)
 }
 
@@ -54,6 +55,7 @@ func (h *DeviceHandler) GetDeviceState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(resp)
 }
 
