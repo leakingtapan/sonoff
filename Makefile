@@ -46,3 +46,7 @@ swagger-gen: bin/swagger
 	find ./apis ! -name swagger.yaml -type f -delete
 	./bin/swagger generate model -f ./apis/swagger.yaml --model-package=apis/models
 	./bin/swagger generate client -f ./apis/swagger.yaml --model-package=apis/models --client-package=apis/client
+
+e2e-test: bin/sonoff
+	./bin/sonoff server --server-ip 127.0.0.1 --server-port 8444 &
+	go test ./tests/... -v
