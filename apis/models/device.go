@@ -27,6 +27,9 @@ type Device struct {
 	// rom version
 	RomVersion string `json:"romVersion,omitempty"`
 
+	// state
+	State string `json:"state,omitempty"`
+
 	// version
 	Version int64 `json:"version,omitempty"`
 }

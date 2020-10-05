@@ -101,7 +101,7 @@ func (a *Client) GetDeviceByID(params *GetDeviceByIDParams) (*GetDeviceByIDOK, e
 }
 
 /*
-  SetDeviceStateByID setts the state of device given device ID
+  SetDeviceStateByID sets the state of device given device ID
 */
 func (a *Client) SetDeviceStateByID(params *SetDeviceStateByIDParams) (*SetDeviceStateByIDOK, error) {
 	// TODO: Validate the params before sending
@@ -112,7 +112,7 @@ func (a *Client) SetDeviceStateByID(params *SetDeviceStateByIDParams) (*SetDevic
 	result, err := a.transport.Submit(&runtime.ClientOperation{
 		ID:                 "setDeviceStateById",
 		Method:             "POST",
-		PathPattern:        "/devices/{deviceId}/state/{state}",
+		PathPattern:        "/devices/{deviceId}/{state}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http", "https"},

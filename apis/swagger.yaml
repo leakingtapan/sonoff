@@ -57,9 +57,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: "#/definitions/Error"
-  /devices/{deviceId}/state/{state}:
+  /devices/{deviceId}/{state}:
     post:
-      summary: "Setts the state of device given device ID"
+      summary: "Sets the state of device given device ID"
       operationId: setDeviceStateById
       parameters:
       - name: "deviceId"
@@ -96,6 +96,8 @@ definitions:
       romVersion:
         type: string
       model:
+        type: string
+      state:
         type: string
   Devices:
     type: array

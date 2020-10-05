@@ -61,7 +61,7 @@ type SetDeviceStateByIDOK struct {
 }
 
 func (o *SetDeviceStateByIDOK) Error() string {
-	return fmt.Sprintf("[POST /devices/{deviceId}/state/{state}][%d] setDeviceStateByIdOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[POST /devices/{deviceId}/{state}][%d] setDeviceStateByIdOK  %+v", 200, o.Payload)
 }
 
 func (o *SetDeviceStateByIDOK) GetPayload() *models.Device {
@@ -93,7 +93,7 @@ type SetDeviceStateByIDNotFound struct {
 }
 
 func (o *SetDeviceStateByIDNotFound) Error() string {
-	return fmt.Sprintf("[POST /devices/{deviceId}/state/{state}][%d] setDeviceStateByIdNotFound ", 404)
+	return fmt.Sprintf("[POST /devices/{deviceId}/{state}][%d] setDeviceStateByIdNotFound ", 404)
 }
 
 func (o *SetDeviceStateByIDNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -124,7 +124,7 @@ func (o *SetDeviceStateByIDDefault) Code() int {
 }
 
 func (o *SetDeviceStateByIDDefault) Error() string {
-	return fmt.Sprintf("[POST /devices/{deviceId}/state/{state}][%d] setDeviceStateById default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[POST /devices/{deviceId}/{state}][%d] setDeviceStateById default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *SetDeviceStateByIDDefault) GetPayload() *models.Error {

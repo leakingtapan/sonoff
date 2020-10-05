@@ -10,3 +10,6 @@ jobs:
     - name: build 
       run: |
         make build 
+    - name: test
+      run: |
+        make e2e-test

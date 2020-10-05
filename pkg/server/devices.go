@@ -28,41 +28,41 @@ func NewDeviceStore() *Devices {
 }
 
 //TODO: move to upper layer
-func (ds *Devices) TurnOn(id string) error {
+func (ds *Devices) TurnOn(id string) (*types.Device, error) {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
 
 	d, found := ds.devices[id]
 	if !found {
-		return fmt.Errorf("Device %s is not found", id)
+		return nil, fmt.Errorf("Device %s is not found", id)
 	}
 
 	d.State = "on"
 
 	err := pushMessage(d)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &d.Device, nil
 }
 
-func (ds *Devices) TurnOff(id string) error {
+func (ds *Devices) TurnOff(id string) (*types.Device, error) {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
 
 	d, found := ds.devices[id]
 	if !found {
-		return fmt.Errorf("Device %s is not found", id)
+		return nil, fmt.Errorf("Device %s is not found", id)
 	}
 
 	d.State = "off"
 
 	err := pushMessage(d)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return &d.Device, nil
 }
 
 func (ds *Devices) Get(id string) (*Device, bool) {
